@@ -1,0 +1,121 @@
+input:
+  prompt:
+    [      /home/jon/D0LocalDev/D0-ML-Dev/mc/prompt/McTreeForMLPrompt.root]
+  FD:
+    [/home/jon/D0LocalDev/D0-ML-Dev/mc/fd/McTreeForMLFD.root]
+  # data: [/home/jon/D0LocalDev/D0-ML-Dev/data/DataTreeForMLSideband.root]
+  data: [/home/jon/D0LocalDev/D0-ML-Dev/data/DataTreeForML.root]
+  treename: TreeML
+
+data_prep:
+  channel: D0ToKPi # options: D0ToKPi, DplusToPiKPi, DsToKKPi, LcToPKPi, XicToPKPi
+  filt_bkg_mass: fM > 1.65   # pandas query to select bkg candidates
+  class_balance:
+    option: equal # change how the dataset is built, options available: 'equal', 'max_signal'
+      # 'equal' -> same number of prompt/FD/bkg (not using all the signal available)
+      # 'max_signal' -> try to use all the signal (prompt and FD) + add n_bkg = 2 * (n_prompt + n_FD)
+    bkg_factor: [1., 1., 1., 1., 1., 1.] # list of multipliers for (nPrompt + nFD) used to determine nCandBkg in the 'max_signal' option
+  seed_split: 42  
+  test_fraction: 1
+
+pt_ranges:
+  min: [1, 2, 3, 4, 5, 6]  # list
+  max: [2, 3, 4, 5, 6, 8]  # list
+
+ml:
+  raw_output: false
+  roc_auc_approach: ovo
+  roc_auc_average: macro
+  training_vars: [fDecayLength, fDecayLengthXY, fCpa, fCpaXY, fImpactParameterProduct]
+  hyper_pars: [
+    {
+      "max_depth": 4,
+      "learning_rate": 0.01,
+      "n_estimators": 1000,
+      "min_child_weight": 5,
+      "n_jobs": 24,
+      "tree_method": hist,
+    }, 
+    {
+      "max_depth": 4,
+      "learning_rate": 0.01,
+      "n_estimators": 1000,
+      "min_child_weight": 5,
+      "n_jobs": 24,
+      "tree_method": hist,
+    },
+    {
+      "max_depth": 4,
+      "learning_rate": 0.01,
+      "n_estimators": 1000,
+      "min_child_weight": 5,
+      "n_jobs": 24,
+      "tree_method": hist,
+    },
+    {
+      "max_depth": 4,
+      "learning_rate": 0.01,
+      "n_estimators": 1000,
+      "min_child_weight": 5,
+      "n_jobs": 24,
+      "tree_method": hist,
+    },
+    {
+      "max_depth": 4,
+      "learning_rate": 0.01,
+      "n_estimators": 1000,
+      "min_child_weight": 5,
+      "n_jobs": 24,
+      "tree_method": hist,
+    },
+    {
+      "max_depth": 4,
+      "learning_rate": 0.01,
+      "n_estimators": 1000,
+      "min_child_weight": 5,
+      "n_jobs": 24,
+      "tree_method": hist,
+    } ]
+  hyper_pars_opt:
+    # activate: false
+    activate: true
+    ntrials: 10
+    njobs: 30
+    timeout: 1800
+    hyper_par_ranges:
+      {
+        "max_depth": !!python/tuple [3, 6],
+        "learning_rate": !!python/tuple [0.01, 0.1],
+        "n_estimators": !!python/tuple [300, 1500],
+        "min_child_weight": !!python/tuple [1, 10],
+        "subsample": !!python/tuple [0.8, 1.],
+        "colsample_bytree": !!python/tuple [0.8, 1.],
+      }
+  saved_models: [
+            /home/jon/D0LocalDev/D0-ML-Dev/trainings/pt1_2/ModelHandler_D0ToKPi_pT_1_2.pickle,
+            /home/jon/D0LocalDev/D0-ML-Dev/trainings/pt2_3/ModelHandler_D0ToKPi_pT_2_3.pickle,
+            /home/jon/D0LocalDev/D0-ML-Dev/trainings/pt3_4/ModelHandler_D0ToKPi_pT_3_4.pickle,
+            /home/jon/D0LocalDev/D0-ML-Dev/trainings/pt4_5/ModelHandler_D0ToKPi_pT_4_5.pickle,
+            /home/jon/D0LocalDev/D0-ML-Dev/trainings/pt5_6/ModelHandler_D0ToKPi_pT_5_6.pickle,
+            /home/jon/D0LocalDev/D0-ML-Dev/trainings/pt6_8/ModelHandler_D0ToKPi_pT_6_8.pickle]
+
+output:
+  # dir: trainings
+  dir: applys
+  leg_labels: # legend labels, keep the right number of classes
+    Bkg: Background
+    Prompt: Prompt
+    FD: NonPrompt
+  out_labels: # output labels, keep the right number of classes
+    Bkg: Bkg
+    Prompt: Prompt
+    FD: NonPrompt
+  
+plots:
+    plotting_columns: ["fDecayLength", "fDecayLengthXY", "fCpa", "fCpaXY", "fImpactParameterProduct", "fM", "fPt"]
+                       # list of variables to plot
+    train_test_log: True # use log scale for plots of train and test distributions
+
+apply: 
+    column_to_save_list: ["fDecayLength", "fDecayLengthXY", "fCpa", "fCpaXY", "fImpactParameterProduct", "fM", "fPt"]
+    # list of variables saved in the dataframes with the applied models 
