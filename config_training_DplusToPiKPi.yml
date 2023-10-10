@@ -1,0 +1,104 @@
+---
+### Configurables common to prepare_samples.py and train_d2h.py
+channel: DplusToPiKPi
+seed_split: 42 # seed used for df_bkg sampling and train_test_split(...)
+labels: [Bkg, Prompt, Nonprompt] # class labels, keep the right number of classes
+
+### Configurables dedicated to prepare_samples.py
+prepare_samples:
+  input:
+    files: [/home/abigot/HFStudies/ML/training_samples/LHC22b1b_run_88827/AO2D.root,
+            /home/abigot/HFStudies/ML/training_samples/LHC22b1a_run_88826/AO2D.root,
+            /home/abigot/HFStudies/ML/training_samples/LHC22o_pass4_small_run_88812/AO2D.root]
+    tree_name: O2hfcand3plite
+  pid:
+    combine_vars: false # switch to combine PID variables
+    mass_hypos: [Pi, Ka] # options available: Pi, Ka, Pr
+    n_prongs: 3 # number of prongs in decay channel
+  downscale_bkg: 1. # fraction of bkg to be kept
+  filt_bkg_mass: fM < 1.82 or 1.92 < fM < 2.00 # pandas query to select bkg candidates
+  output:
+    force: False # force re-creation of output files
+
+### Configurables dedicated to train_d2h.py
+data_prep:
+  indirs: # directories containing outputs of prepare_samples.py (.parquet.gzip labeled files)
+    Prompt:
+      [
+        /home/abigot/HFStudies/ML/training_samples/LHC22b1b_run_88827/,
+        /home/abigot/HFStudies/ML/training_samples/LHC22b1a_run_88826/
+      ]
+    Nonprompt: # set to null to deactivate this class
+      [
+        /home/abigot/HFStudies/ML/training_samples/LHC22b1b_run_88827/,
+        /home/abigot/HFStudies/ML/training_samples/LHC22b1a_run_88826/
+      ]
+    Bkg: [/home/abigot/HFStudies/ML/training_samples/LHC22o_pass4_small_run_88812/]
+
+  pt_bins_limits: [2,3]
+  name_pt_var: fPt # name of pT branch in original TTree used for prepare_samples.py
+
+  class_balance:
+    share: equal # change how the dataset is built, options available: 'equal', 'all_signal'
+      # 'equal' -> same number of prompt/nonprompt/bkg (not using all the signal available)
+      # 'all_signal' -> try to use all the signal (prompt and nonprompt) + add n_bkg = bkg_factor * (n_prompt + n_nonprompt)
+    bkg_factor: [1.] # list of multipliers for (n_prompt + n_nonprompt) used to determine n_cand_bkg in the 'all_signal' option
+  test_fraction: 0.3
+
+ml:
+  raw_output: false
+  roc_auc_approach: ovo
+  roc_auc_average: macro
+  training_vars:
+    [
+      fPtProng0,
+      fImpactParameter0,
+      fPtProng1,
+      fImpactParameter1,
+      fPtProng2,
+      fImpactParameter2,
+      fDecayLength,
+      fDecayLengthXYNormalised,
+      fCpa,
+      fCpaXY,
+      fMaxNormalisedDeltaIP]
+    #   fNSigCombPi0,
+    #   fNSigCombKa0,
+    #   fNSigCombPi1,
+    #   fNSigCombKa1,
+    #   fNSigCombPi2,
+    #   fNSigCombKa2
+    # ]
+  hyper_pars: [
+    {
+      "max_depth": 4,
+      "learning_rate": 0.01,
+      "n_estimators": 1000,
+      "min_child_weight": 5,
+      "n_jobs": 4,
+      "tree_method": hist,
+    } ]
+  hyper_pars_opt:
+    activate: false
+    ntrials: 2 #25
+    njobs: 4
+    timeout: 1800
+    hyper_par_ranges:
+      {
+        "max_depth": !!python/tuple [3, 4],
+        "learning_rate": !!python/tuple [0.01, 0.3],
+        "n_estimators": !!python/tuple [300, 1300],
+        "min_child_weight": !!python/tuple [1, 5],
+        "subsample": !!python/tuple [0.8, 1.],
+        "colsample_bytree": !!python/tuple [0.8, 1.],
+      }
+
+output:
+  dir: trainings/Dplus
+  log_file: log.txt # name of log file for each model training
+  # list of variables saved in the dataframes with the applied models
+  column_to_save_list: ["fPt", "fM"]
+
+plots:
+    extra_columns: ["fPt", "fM"] # list of variables to plot (on top of the training ones)
+    extension: ["pdf", "png"] # extension of files containing saved plots
