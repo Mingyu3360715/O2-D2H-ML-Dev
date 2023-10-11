@@ -137,9 +137,9 @@ class MlTrainer:
 
         self.__fill_list_input_files()
 
-        hdl_bkg = TreeHandler(self.file_lists['Bkg'])
-        hdl_prompt = TreeHandler(self.file_lists['Prompt'])
-        hdl_nonprompt = None if self.binary else TreeHandler(self.file_lists['Nonprompt'])
+        hdl_bkg = TreeHandler(self.file_lists[self.labels[0]])
+        hdl_prompt = TreeHandler(self.file_lists[self.labels[1]])
+        hdl_nonprompt = None if self.binary else TreeHandler(self.labels[2])
 
         hdl_prompt.slice_data_frame(self.name_pt_var, self.pt_bins, True)
         if not self.binary:
@@ -439,7 +439,7 @@ class MlTrainer:
                                                bkg_factor)
             self.__train_test(train_test_data, self.hyper_pars[i_pt], pt_bin, out_dir_pt)
 
-def main(config):
+def main(cfg):
     """
     Main function
 
@@ -447,7 +447,7 @@ def main(config):
     -----------------
     - config: dictionary with config read from a yaml file
     """
-    MlTrainer(config).process()
+    MlTrainer(cfg).process()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Arguments')
@@ -457,7 +457,7 @@ if __name__ == "__main__":
 
     print('Loading analysis configuration: ...', end='\r')
     with open(args.config, "r", encoding="utf-8") as yml_cfg:
-        cfg = yaml.load(yml_cfg, yaml.FullLoader)
+        config = yaml.load(yml_cfg, yaml.FullLoader)
     print('Loading analysis configuration: Done!')
 
-    main(cfg)
+    main(config)

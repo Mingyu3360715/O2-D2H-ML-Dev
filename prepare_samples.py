@@ -17,6 +17,7 @@ import uproot
 import yaml
 from alive_progress import alive_bar
 
+MAX_FILES = 1000
 
 # pylint: disable=too-many-locals
 def combine_tpc_or_tof(df, mass_hypos, n_prongs):
@@ -119,7 +120,7 @@ def divide_df_for_origin(df, cols_to_remove=None):
     return df_bkg, df_prompt, df_nonprompt
 
 
-def main(cfg, max_files=1000):
+def main(cfg):
     """
     Main function
 
@@ -128,14 +129,9 @@ def main(cfg, max_files=1000):
     - config: dictionary with configs
     """
 
-    debug = True
-    if debug:
-        prefix = "Test"
-    else:
-        prefix = ""
-
     # import configurables
     channel = cfg['channel']
+    labels = cfg['labels']
     input_files = cfg['prepare_samples']['input']['files']
     input_tree_name = cfg['prepare_samples']['input']['tree_name']
     combine_pid_vars = cfg['prepare_samples']['pid']['combine_vars']
@@ -150,8 +146,8 @@ def main(cfg, max_files=1000):
 
     df_tot = None
 
-    with alive_bar(len(input_files[:max_files])) as bar_alive:
-        for file in input_files[:max_files]:
+    with alive_bar(len(input_files[:MAX_FILES])) as bar_alive:
+        for file in input_files[:MAX_FILES]:
             print(f"\033[32mExtracting dataframes from input "
                   f"{file}\033[0m")
 
@@ -180,17 +176,18 @@ def main(cfg, max_files=1000):
                     frac=downscale_bkg, random_state=seed_split)
                 df_bkg.query(inv_mass_sidebands, inplace=True) # select bkg candidates
                 df_bkg.to_parquet(
-                    os.path.join(indir, f"Bkg_{channel}.parquet.gzip"),
+                    os.path.join(indir, f"{labels[0]}_{channel}.parquet.gzip"),
                     compression="gzip"
                 )
                 df_prompt.to_parquet(
-                    os.path.join(indir, f"Prompt_{channel}.parquet.gzip"),
+                    os.path.join(indir, f"{labels[1]}_{channel}.parquet.gzip"),
                     compression="gzip"
                 )
-                df_nonprompt.to_parquet(
-                    os.path.join(indir, f"Nonprompt_{channel}.parquet.gzip"),
-                    compression="gzip"
-                )
+                if not df_nonprompt.empty:
+                    df_nonprompt.to_parquet(
+                        os.path.join(indir, f"{labels[2]}_{channel}.parquet.gzip"),
+                        compression="gzip"
+                    )
 
                 df_tot = None
 
@@ -207,15 +204,5 @@ if __name__ == "__main__":
     with open(args.config, "r", encoding="utf-8") as yml_cfg:
         config = yaml.load(yml_cfg, yaml.FullLoader)
     print('Loading analysis configuration: Done!')
-    # parser.add_argument("channel", metavar="text", default="DplusToPiKPi",
-    #                     help="name of the decay channel")
-    # parser.add_argument("--max_files", type=int, default=1000,
-    #                     help="max input files to be processed")
-    # parser.add_argument("--downscale_bkg", type=float, default=1.,
-    #                     help="fraction of bkg to be kept")
-    # parser.add_argument("--force", action="store_true", default=False,
-    #                     help="force re-creation of output files")
-    # parser.add_argument("--dosmearing", action="store_true", default=False,
-    #                     help="do smearing on the dca of daughter tracks ")
 
-    main(config) # , args.channel, args.max_files, args.downscale_bkg, args.force)
+    main(config)
