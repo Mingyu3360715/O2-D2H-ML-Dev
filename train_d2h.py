@@ -25,6 +25,10 @@ from hipe4ml.tree_handler import TreeHandler
 from hipe4ml_converter.h4ml_converter import H4MLConverter
 from sklearn.model_selection import train_test_split
 
+LABEL_BKG = 0
+LABEL_PROMPT = 1
+LABEL_NONPROMPT = 2
+
 MAX_BKG_FRAC = 0.4 # max of bkg fraction to keep for training
 
 #pylint: disable= too-many-instance-attributes, too-few-public-methods
@@ -139,7 +143,7 @@ class MlTrainer:
 
         hdl_bkg = TreeHandler(self.file_lists[self.labels[0]])
         hdl_prompt = TreeHandler(self.file_lists[self.labels[1]])
-        hdl_nonprompt = None if self.binary else TreeHandler(self.labels[2])
+        hdl_nonprompt = None if self.binary else TreeHandler(self.file_lists[self.labels[2]])
 
         hdl_prompt.slice_data_frame(self.name_pt_var, self.pt_bins, True)
         if not self.binary:
@@ -226,7 +230,8 @@ class MlTrainer:
             sort=True
         )
 
-        labels_array = np.array([0]*n_bkg + [1]*n_prompt + [2]*n_nonprompt)
+        labels_array = np.array(
+            [LABEL_BKG]*n_bkg + [LABEL_PROMPT]*n_prompt + [LABEL_NONPROMPT]*n_nonprompt)
         if 0 < self.test_frac < 1:
             train_set, test_set, y_train, y_test = train_test_split(
                 df_tot, labels_array, test_size=self.test_frac, random_state=self.seed_split
@@ -457,7 +462,7 @@ if __name__ == "__main__":
 
     print('Loading analysis configuration: ...', end='\r')
     with open(args.config, "r", encoding="utf-8") as yml_cfg:
-        config = yaml.load(yml_cfg, yaml.FullLoader)
+        configuration = yaml.load(yml_cfg, yaml.FullLoader)
     print('Loading analysis configuration: Done!')
 
-    main(config)
+    main(configuration)

@@ -24,3 +24,8 @@ Given the output directory set in `config.yml`, a directory is created for each 
 - plots at training-testing level: BDT output scores, ROC curves, precision recall, features importance
 - trained models in files containing `ModelHandler` prefix (in `pickle` and `onnx` formats). *The `.onnx` can be used for ML inference in O2Physics selection task.*
 - model applied to test set in file containing `ModelApplied` suffix
+
+## Working point optimisation
+The goal is to perform a scan on BDT output scores while computing relevant quantities such as efficiencies (preselections and BDT), yield fractions, expected signal, expected background, allowing to build expected signal-over-background and expected significance.
+
+To do so, the needed input gathers the preselections acceptance-times-efficiency (i.e. without cuts on BDT scores) and pT-differential cross section predicted by FONLL, both for prompt and non-prompt.
