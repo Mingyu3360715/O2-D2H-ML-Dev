@@ -13,8 +13,7 @@
 
 """
 file: prepare_samples.py
-brief: script for the preparation of the samples for the training
-       of ML models to be used in PWGHF/D2H
+brief: script for the preparation of the samples for the training of ML models to be used in PWGHF/D2H
 note: inspired by EventFiltering/PWGHF/Macros/prepare_samples.py
 usage: python3 prepare_samples.py CONFIG
 author: Alexandre Bigot <alexandre.bigot@cern.ch>, Strasbourg University
@@ -29,6 +28,28 @@ import yaml  # pylint: disable=import-error
 from alive_progress import alive_bar  # pylint: disable=import-error
 
 MAX_FILES = 1000
+
+
+def enforce_list(x):
+    """
+    Helper method to enforce list type
+
+    Parameters
+    ----------
+    - x: a string or a list of string
+
+    Returns
+    ----------
+    - x_list if x was not a list (and not None), x itself otherwise
+    """
+
+    if not isinstance(x, list):
+        # handle possible spaces in config file entry
+        x = x.split(",")
+        for i, element in enumerate(x):
+            x[i] = element.strip()
+
+    return x
 
 
 # pylint: disable=too-many-locals
@@ -144,8 +165,8 @@ def main(cfg):
 
     # import configurables
     channel = cfg["channel"]
-    labels = cfg["labels"]
-    input_files = cfg["prepare_samples"]["input"]["files"]
+    labels = enforce_list(cfg["labels"])
+    input_files = enforce_list(cfg["prepare_samples"]["input"]["files"])
     input_tree_name = cfg["prepare_samples"]["input"]["tree_name"]
     combine_pid_vars = cfg["prepare_samples"]["pid"]["combine_vars"]
     downscale_bkg = cfg["prepare_samples"]["downscale_bkg"]
@@ -155,7 +176,7 @@ def main(cfg):
 
     mass_hypos, n_prongs = None, None
     if combine_pid_vars:
-        mass_hypos = cfg["prepare_samples"]["pid"]["mass_hypos"]
+        mass_hypos = enforce_list(cfg["prepare_samples"]["pid"]["mass_hypos"])
         n_prongs = cfg["prepare_samples"]["pid"]["n_prongs"]
 
     df_tot = None

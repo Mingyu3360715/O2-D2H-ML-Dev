@@ -45,6 +45,28 @@ LABEL_NONPROMPT = 2
 MAX_BKG_FRAC = 0.4  # max of bkg fraction to keep for training
 
 
+def enforce_list(x):
+    """
+    Helper method to enforce list type
+
+    Parameters
+    ----------
+    - x: a string or a list of string
+
+    Returns
+    ----------
+    - x_list if x was not a list (and not None), x itself otherwise
+    """
+
+    if not isinstance(x, list):
+        # handle possible spaces in config file entry
+        x = x.split(",")
+        for i, element in enumerate(x):
+            x[i] = element.strip()
+
+    return x
+
+
 # pylint: disable= too-many-instance-attributes, too-few-public-methods
 class MlTrainer:
     """
@@ -54,9 +76,9 @@ class MlTrainer:
     def __init__(self, config):
         self.channel = config["channel"]
         self.seed_split = config["seed_split"]
-        self.labels = config["labels"]
+        self.labels = enforce_list(config["labels"])
 
-        pt_bins_limits = config["data_prep"]["pt_bins_limits"]
+        pt_bins_limits = enforce_list(config["data_prep"]["pt_bins_limits"])
         self.pt_bins = [[a, b] for a, b in zip(pt_bins_limits[:-1], pt_bins_limits[1:])]
         self.extension = config["plots"]["extension"]
 
@@ -65,15 +87,15 @@ class MlTrainer:
         self.outdir = config["output"]["dir"]
         self.share = config["data_prep"]["class_balance"]["share"]
         self.bkg_factor = config["data_prep"]["class_balance"]["bkg_factor"]
+        self.training_vars = enforce_list(config["ml"]["training_vars"])
         self.test_frac = config["data_prep"]["test_fraction"]
-        self.vars_to_draw = config["plots"]["extra_columns"] + config["ml"]["training_vars"]
+        self.vars_to_draw = config["plots"]["extra_columns"] + self.training_vars
         self.name_pt_var = config["data_prep"]["name_pt_var"]
 
         self.raw_output = config["ml"]["raw_output"]
         self.roc_auc_approach = config["ml"]["roc_auc_approach"]
         self.roc_auc_average = config["ml"]["roc_auc_average"]
         self.score_metric = "roc_auc"
-        self.training_vars = config["ml"]["training_vars"]
         self.hyper_pars = config["ml"]["hyper_pars"]
         self.hyper_pars_opt = config["ml"]["hyper_pars_opt"]
 
@@ -95,7 +117,7 @@ class MlTrainer:
             print("\033[91mERROR: bkg_factor must be defined for each pT bin!\033[0m")
             sys.exit()
         # training
-        if not isinstance(self.training_vars, list):
+        if self.training_vars is None:
             print("\033[91mERROR: training columns must be defined!\033[0m")
             sys.exit()
         # hyper-parameters options
@@ -147,6 +169,12 @@ class MlTrainer:
     def __get_sliced_dfs(self):
         """
         Helper method to get pT-sliced dataframes for each class
+
+        Outputs
+        -----------------
+        - hdl_bkg: pandas dataframe containing only background candidates
+        - hdl_prompt: pandas dataframe containing only prompt signal
+        - hdl_nonprompt: pandas dataframe containing only non-prompt signal
         """
 
         print("Loading and preparing data files: ...", end="\r")
@@ -169,6 +197,19 @@ class MlTrainer:
     def __data_prep(self, df_bkg, df_prompt, df_nonprompt, pt_bin, out_dir, bkg_factor):
         """
         Helper method for pt-dependent data preparation
+
+        Parameters
+        -----------------
+        - df_bkg: pandas dataframe containing only background candidates
+        - df_prompt: pandas dataframe containing only prompt signal
+        - df_nonprompt: pandas dataframe containing only non-prompt signal
+        - pt_bin: pT bin
+        - out_dir: output directory
+        - bkg_factor: multiplier for (n_prompt + n_nonprompt) used to determine n_cand_bkg in the 'all_signal' option
+
+        Outputs
+        -----------------
+        - train_test_data: list containing train/test sets and the associated model predictions
         """
 
         n_prompt = len(df_prompt)
@@ -295,6 +336,16 @@ class MlTrainer:
     def __train_test(self, train_test_data, hyper_pars, pt_bin, out_dir):
         """
         Helper method for model training and testing
+
+        Parameters
+        -----------------
+        - train_test_data: list containing train/test sets and the associated model predictions
+        - hyper_pars: default hyper-parameters (can be modified if Optuna enabled)
+        - pt_bin: pT bin
+        - out_dir: output directory
+
+        Outputs
+        -----------------
         """
 
         n_classes = len(np.unique(train_test_data[3]))
