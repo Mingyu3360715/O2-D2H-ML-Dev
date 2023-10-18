@@ -35,7 +35,7 @@ data_prep:
       ]
     Bkg: [/home/abigot/HFStudies/ML/training_samples/LHC22o_pass4_small_run_88812/]
 
-  pt_bins_limits: [2,20]
+  pt_bins_limits: [4,5]
   name_pt_var: fPt # name of pT branch in original TTree used for prepare_samples.py
 
   class_balance:
