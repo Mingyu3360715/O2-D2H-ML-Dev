@@ -160,7 +160,9 @@ class MlOutputScanner:
         # output files
         self.outdir = enforce_trailing_slash(config["output"]["outdir"])
         self.outfile = self.outdir + config["output"]["filename"]
-        self.extension = config["output"]["extension"]
+        self.extension = ["pdf"]
+        if config["output"]["extension"] is not None:
+            self.extension = enforce_list(config["output"]["extension"])
         self.watermark = config["output"]["watermark"]
 
         # expected signal promptness (prompt or nonprompt)
