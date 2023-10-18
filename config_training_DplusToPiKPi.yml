@@ -18,7 +18,7 @@ prepare_samples:
   downscale_bkg: 1. # fraction of bkg to be kept
   filt_bkg_mass: fM < 1.82 or 1.92 < fM < 2.00 # pandas query to select bkg candidates
   output:
-    force: False # force re-creation of output files
+    force: false # force re-creation of output files
 
 ### Configurables dedicated to train_d2h.py
 data_prep:
@@ -35,13 +35,13 @@ data_prep:
       ]
     Bkg: [/home/abigot/HFStudies/ML/training_samples/LHC22o_pass4_small_run_88812/]
 
-  pt_bins_limits: [4,5]
+  pt_bins_limits: [4, 5]
   name_pt_var: fPt # name of pT branch in original TTree used for prepare_samples.py
 
   class_balance:
     share: equal # change how the dataset is built, options available: 'equal', 'all_signal'
-      # 'equal' -> same number of prompt/nonprompt/bkg (not using all the signal available)
-      # 'all_signal' -> try to use all the signal (prompt and nonprompt) + add n_bkg = bkg_factor * (n_prompt + n_nonprompt)
+    # 'equal' -> same number of prompt/nonprompt/bkg (not using all the signal available)
+    # 'all_signal' -> try to use all the signal (prompt and nonprompt) + add n_bkg = bkg_factor * (n_prompt + n_nonprompt)
     bkg_factor: [1.] # list of multipliers for (n_prompt + n_nonprompt) used to determine n_cand_bkg in the 'all_signal' option
   test_fraction: 0.3
 
@@ -62,13 +62,13 @@ ml:
       fCpa,
       fCpaXY,
       fMaxNormalisedDeltaIP]
-    #   fNSigCombPi0,
-    #   fNSigCombKa0,
-    #   fNSigCombPi1,
-    #   fNSigCombKa1,
-    #   fNSigCombPi2,
-    #   fNSigCombKa2
-    # ]
+  #   fNSigCombPi0,
+  #   fNSigCombKa0,
+  #   fNSigCombPi1,
+  #   fNSigCombKa1,
+  #   fNSigCombPi2,
+  #   fNSigCombKa2
+  # ]
   hyper_pars: [
     {
       "max_depth": 4,
@@ -77,10 +77,10 @@ ml:
       "min_child_weight": 5,
       "n_jobs": 4,
       "tree_method": hist,
-    } ]
+    }]
   hyper_pars_opt:
     activate: false
-    ntrials: 2 #25
+    ntrials: 2 # 25
     njobs: 4
     timeout: 1800
     hyper_par_ranges:
@@ -100,5 +100,5 @@ output:
   column_to_save_list: ["fPt", "fM"]
 
 plots:
-    extra_columns: ["fPt", "fM"] # list of variables to plot (on top of the training ones)
-    extension: ["pdf", "png"] # extension of files containing saved plots
+  extra_columns: ["fPt", "fM"] # list of variables to plot (on top of the training ones)
+  extension: ["pdf", "png"] # extension of files containing saved plots
