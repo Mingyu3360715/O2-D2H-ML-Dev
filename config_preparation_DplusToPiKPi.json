@@ -1,0 +1,26 @@
+{
+  "channel": "DplusToPiKPi",
+  "seed_split": 42,
+  "labels": ["Bkg", "Prompt", "Nonprompt"],
+  "prepare_samples": {
+    "input": {
+      "files": ["/home/abigot/HFStudies/ML/training_samples/LHC22b1b_run_88827/AO2D_merged.root",
+      "/home/abigot/HFStudies/ML/training_samples/LHC22b1a_run_88826/AO2D_merged.root",
+      "/home/abigot/HFStudies/ML/training_samples/LHC22o_pass4_small_run_88812/AO2D_merged.root"],
+      "tree_name": "O2hfcand3plite"
+    }
+  },
+  "preselection": null,
+  "cols_to_remove": null,
+  "pid": {
+    "combine_vars": false,
+    "mass_hypos": ["Pi", "Ka"],
+    "n_prongs": 3
+  },
+  "downscale_bkg": 1.0,
+  "filt_bkg_mass": "fM < 1.82 || (1.92 < fM && fM < 2.00)",
+  "output": {
+    "force": false,
+    "tree_name": "treeMLDplus"
+  }
+}
