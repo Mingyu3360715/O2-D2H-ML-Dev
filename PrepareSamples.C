@@ -127,7 +127,7 @@ std::vector<TString> getPathInputTrees(const T1& nameInputFiles, const T2& nameT
       std::string name1 = nameDirs[1].substr(0, nameDirs[1].find(delimiter));
 
       if (name0 != name1) {
-        std::cerr << "ERROR: too many DFs in " << nameFile << " ! Run o2-aod-merger with --max-size <great number> to get only one DF." << std::endl;
+        std::cerr << "ERROR: too many DFs in " << nameFile << " ! Run o2-aod-merger with --max-size <great number> --output AO2D_merged.root to get only one DF. Run o2-aod-merger --help for more information" << std::endl;
         return std::vector<TString>{""};
       }
     }
@@ -161,10 +161,7 @@ void PrepareSamples(TString nameCfgFile="./config_preparation_DplusToPiKPi.json"
   const auto labels = getVectorFromJson<std::string>(config["labels"]);
   const auto nameInputFiles = getVectorFromJson<std::string>(config["prepare_samples"]["input"]["files"]);
   const std::string nameTree = config["prepare_samples"]["input"]["tree_name"].GetString();
-  std::string preSelections = "";
-  if (!config["preselection"].IsNull()) {
-    preSelections = config["preselection"].GetString();
-  }
+  const auto preSelections = getVectorFromJson<std::string>(config["preselections"]);
 
   const bool doPidCombination = config["pid"]["combine_vars"].GetBool();
   const std::vector<TString> massHypos = getVectorFromJson<TString>(config["pid"]["mass_hypos"]);
@@ -181,6 +178,7 @@ void PrepareSamples(TString nameCfgFile="./config_preparation_DplusToPiKPi.json"
 
   // output
   const bool force = config["output"]["force"].GetBool();
+  const auto nameOutputDirs = getVectorFromJson<std::string>(config["output"]["dirs"]);
   const TString nameOutputTree = config["output"]["tree_name"].GetString();
 
   // configure access to the input TTrees
@@ -190,67 +188,71 @@ void PrepareSamples(TString nameCfgFile="./config_preparation_DplusToPiKPi.json"
     return;
   }
 
-  TChain chain;
+  uint8_t counter_outdir = 0;
   for (const auto& pathInputTree : pathInputTrees) {
+    TChain chain;
     chain.Add(pathInputTree);
-  }
 
-  // define dataframe from the input TTrees
-  ROOT::EnableImplicitMT(32); // tell ROOT to go parallel
-  ROOT::RDataFrame dataFrame(chain);
+    // define dataframe from the input TTrees
+    ROOT::EnableImplicitMT(32); // tell ROOT to go parallel
+    ROOT::RDataFrame dataFrame(chain);
 
-  std::vector<std::string> colsToKeep = dataFrame.GetColumnNames();
-  if (colsToRemove.size() == 0) {
-    std::remove(colsToKeep.begin(), colsToKeep.end(), "fOriginMcRec"); // just remove cand_type if not explicitly kept
-    colsToKeep.pop_back();
-  }
+    std::vector<std::string> colsToKeep = dataFrame.GetColumnNames();
+    if (colsToRemove.size() == 0) {
+      std::remove(colsToKeep.begin(), colsToKeep.end(), "fOriginMcRec"); // just remove cand_type if not explicitly kept
+      colsToKeep.pop_back();
+    }
 
-  // apply preselections, if enabled
-  auto dfPreselDummy = dataFrame.Filter("fM > 0"); // trick to get a filtered dataframe type
-  std::array<decltype(dfPreselDummy), 1> dataFrames{dfPreselDummy};
-  if (!preSelections.empty()) {
-    dataFrames[0] = dataFrame.Filter(preSelections);
-  }
-
-  // combine PID variables, if enabled
-  if (doPidCombination) {
-
-    const TString fNSigTpc("fNSigTpc");
-    const TString fNSigTof("fNSigTof");
-    const TString fNSigTpcTof("fNSigTpcTof");
-
-    std::vector<TString> suffixPid;
-    for (const auto& massHypo : massHypos) {
-      for (uint8_t iProng{0}; iProng < nProngs; ++iProng) {
-        suffixPid.emplace_back(massHypo + TString::Format("%d", iProng));
+    // apply preselections, if enabled
+    auto dfPreselDummy = dataFrame.Filter("fM > 0"); // trick to get a filtered dataframe type
+    std::array<decltype(dfPreselDummy), 1> dataFrames{dfPreselDummy};
+    if (preSelections.size() != 0) {
+      for (const auto& preSelection : preSelections) {
+        dataFrames[0] = dataFrame.Filter(preSelection);
       }
     }
 
-    for (const auto& suffix : suffixPid) {
-      // define column names
-      TString nameColTpc = fNSigTpc + suffix;
-      TString nameColTof = fNSigTpc + suffix;
-      TString nameColTpcTof = fNSigTpcTof + suffix;
-      TString filterCombinedNSig = nameColTpcTof + ">= 0"; // apply TPC or TOF logic
-      // compute combined nSigma
-      auto df = dataFrames[0].Define(nameColTpcTof, combinePid, {nameColTpc.Data(), nameColTof.Data()});
-      dataFrames[0] = df.Filter(filterCombinedNSig.Data());
+    // combine PID variables, if enabled
+    if (doPidCombination) {
 
-      colsToKeep.emplace_back(nameColTpcTof);
+      const TString fNSigTpc("fNSigTpc");
+      const TString fNSigTof("fNSigTof");
+      const TString fNSigTpcTof("fNSigTpcTof");
+
+      std::vector<TString> suffixPid;
+      for (const auto& massHypo : massHypos) {
+        for (uint8_t iProng{0}; iProng < nProngs; ++iProng) {
+          suffixPid.emplace_back(massHypo + TString::Format("%d", iProng));
+        }
+      }
+
+      for (const auto& suffix : suffixPid) {
+        // define column names
+        TString nameColTpc = fNSigTpc + suffix;
+        TString nameColTof = fNSigTpc + suffix;
+        TString nameColTpcTof = fNSigTpcTof + suffix;
+        TString filterCombinedNSig = nameColTpcTof + ">= 0"; // apply TPC or TOF logic
+        // compute combined nSigma
+        auto df = dataFrames[0].Define(nameColTpcTof, combinePid, {nameColTpc.Data(), nameColTof.Data()});
+        dataFrames[0] = df.Filter(filterCombinedNSig.Data());
+
+        colsToKeep.emplace_back(nameColTpcTof);
+      }
     }
-  }
 
-  // define total preselected dataframe
-  auto dfTot = dataFrames[0];
+    // define total preselected dataframe
+    auto dfTot = dataFrames[0];
 
-  // divide dataframe into classes and save them in flagged .root files
-  for (const auto& id : ids) {
-    if (id == idBkg) {
-      dfTot.Filter(TString::Format("fOriginMcRec == %d", id).Data()).Filter(invMassSideBands)
-        .Snapshot(nameOutputTree, TString::Format("%s_%s.root", labels[id].data(), channel.data()), colsToKeep);
-    } else {
-      dfTot.Filter(TString::Format("fOriginMcRec == %d", id).Data())
-        .Snapshot(nameOutputTree, TString::Format("%s_%s.root", labels[id].data(), channel.data()), colsToKeep);
+    // divide dataframe into classes and save them in flagged .root files
+    for (const auto& id : ids) {
+      if (id == idBkg) {
+        dfTot.Filter(TString::Format("fOriginMcRec == %d", id).Data()).Filter(invMassSideBands)
+          .Snapshot(nameOutputTree, TString::Format("%s/%s_%s.root", nameOutputDirs[counter_outdir].data(), labels[id].data(), channel.data()), colsToKeep);
+      } else {
+        dfTot.Filter(TString::Format("fOriginMcRec == %d", id).Data())
+          .Snapshot(nameOutputTree, TString::Format("%s/%s_%s.root", nameOutputDirs[counter_outdir].data(), labels[id].data(), channel.data()), colsToKeep);
+      }
     }
+    counter_outdir++;
   }
 }

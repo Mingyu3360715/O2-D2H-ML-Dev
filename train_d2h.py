@@ -11,6 +11,10 @@
 # granted to it by virtue of its status as an Intergovernmental Organization
 # or submit itself to any jurisdiction.
 
+# TODO:
+# - add switch between .parquet and .root files
+# - add configurable for tree_name for input
+
 """
 file: train_d2h.py
 brief: script for the training of ML models to be used in D2H
@@ -87,6 +91,7 @@ class MlTrainer:
         self.outdir = config["output"]["dir"]
         self.share = config["data_prep"]["class_balance"]["share"]
         self.bkg_factor = config["data_prep"]["class_balance"]["bkg_factor"]
+        self.downsample_bkg_factor = config["data_prep"]["downsample_bkg_factor"]
         self.training_vars = enforce_list(config["ml"]["training_vars"])
         self.test_frac = config["data_prep"]["test_fraction"]
         self.vars_to_draw = config["plots"]["extra_columns"] + self.training_vars
@@ -122,7 +127,7 @@ class MlTrainer:
             sys.exit()
         # hyper-parameters options
         if not isinstance(self.hyper_pars, list):
-            print("\033[91mERROR: hyper-parameters must be defined " "or be a list containing an empty dict!\033[0m")
+            print("\033[91mERROR: hyper-parameters must be defined or be a list containing an empty dict!\033[0m")
             sys.exit()
         if not isinstance(self.hyper_pars[0], dict):
             print("\033[91mERROR: hyper-parameters must be a list of dict!\033[0m")
@@ -154,7 +159,7 @@ class MlTrainer:
             if self.indirs[cand_type] is None:
                 continue
             for indir in self.indirs[cand_type]:
-                file = os.path.join(indir, f"{cand_type}_{self.channel}.parquet.gzip")
+                file = os.path.join(indir, f"{cand_type}_{self.channel}.root")  # TODO make parquet available ?
                 if os.path.isfile(file):
                     file_lists[cand_type].append(file)
                 else:
@@ -181,9 +186,10 @@ class MlTrainer:
 
         self.__fill_list_input_files()
 
-        hdl_bkg = TreeHandler(self.file_lists[self.labels[0]])
-        hdl_prompt = TreeHandler(self.file_lists[self.labels[1]])
-        hdl_nonprompt = None if self.binary else TreeHandler(self.file_lists[self.labels[2]])
+        hdl_bkg = TreeHandler(file_name=self.file_lists[self.labels[0]], tree_name="treeMLDplus")
+        hdl_prompt = TreeHandler(file_name=self.file_lists[self.labels[1]], tree_name="treeMLDplus")
+        hdl_nonprompt = None if self.binary else TreeHandler(
+            file_name=self.file_lists[self.labels[2]], tree_name="treeMLDplus")
 
         hdl_prompt.slice_data_frame(self.name_pt_var, self.pt_bins, True)
         if hdl_nonprompt is not None:
@@ -264,12 +270,13 @@ class MlTrainer:
             sys.exit()
 
         print(log_share)
-        print(f"Fraction of bkg candidates used for ML: {100*bkg_fraction:.2f}%")
-        if (1 - self.test_frac) * bkg_fraction > MAX_BKG_FRAC:
-            print(
-                f"\033[93mWARNING: using more than {100*MAX_BKG_FRAC:.0f}% "
-                "of bkg available for training, not good!\033[0m"
-            )
+
+        log_bkg_fraction = "\nFraction of original (i.e. from original dataset) bkg candidates used for ML: " \
+            f"{100*bkg_fraction*self.downsample_bkg_factor:.2f}%"
+        if (1 - self.test_frac) * bkg_fraction * self.downsample_bkg_factor > MAX_BKG_FRAC:
+            log_bkg_fraction = f"\033[93m\nWARNING: using more than {100*MAX_BKG_FRAC:.0f}% " \
+                "of original (i.e. from original dataset) bkg available for training!\033[0m"
+        print(log_bkg_fraction)
 
         if self.binary:
             log_training_cands = (
@@ -287,6 +294,7 @@ class MlTrainer:
         with open(os.path.join(out_dir, self.log_file), "w", encoding="utf-8") as file:
             file.write(log_available_cands)
             file.write(log_share)
+            file.write(log_bkg_fraction)
             file.write(log_training_cands)
 
         df_tot = pd.concat([df_bkg[:n_bkg], df_prompt[:n_prompt], df_nonprompt[:n_nonprompt]], sort=True)
@@ -366,7 +374,7 @@ class MlTrainer:
                     timeout=self.hyper_pars_opt["timeout"],
                     n_jobs=self.hyper_pars_opt["njobs"],
                     n_trials=self.hyper_pars_opt["ntrials"],
-                    direction="maximize",
+                    direction="maximize"
                 )
             sys.stdout = sys.__stdout__
             print("Performing optuna hyper-parameters optimisation: Done!")
