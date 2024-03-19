@@ -6,9 +6,9 @@ In order to execute the code in this folder, the following python libraries are 
 - [alive_progress](https://github.com/rsalmei/alive-progress)
 
 All configurables needed for sample preparation, ML training and working point optimisation are respectively embedded in configuration files such as:
-- `config_preparation_DplusToPiKPi.json`;
-- `config_training_DplusToPiKPi.yml`;
-- `config_optimisation_DplusToPiKPi.yml`.
+- `config_preparation.json`;
+- `config_training.yml`;
+- `config_optimisation.yml`.
 
 ## Training
 ### Download training samples from Hyperloop
@@ -18,13 +18,13 @@ Download the derived `AO2D.root` (produced via a treeCreator task for example) a
 
 ### Prepare samples
 In order to prepare the samples the following script can be used:
-```root -l PrepareSamples.C+(TString nameCfgFile="./config_preparation_DplusToPiKPi.json")```
+```root -l PrepareSamples.C+(TString nameCfgFile="./config_preparation.json")```
 
 Preselections can be applied at this level along with teh combination of TPC and TOF PID variables. This macro shall produce `.root` files containing labeled data samples (one file for each label) for each input `AO2D` file.
 
 ### Perform training
 In order to perform the training and produce the BDT models to be used in D2H, the following script can be used:
-```python3 train_d2h.py config_training.yml```
+```python3 ml_regression.py config_training.yml```
 Given the output directory set in `config_training.yml`, a directory is created for each pT bin (i.e. each model trained) and filled with:
 - plots at data preparation level: variables distributions and correlations
 - plots at training-testing level: BDT output scores, ROC curves, precision recall, features importance
