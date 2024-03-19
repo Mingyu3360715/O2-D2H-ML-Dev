@@ -12,7 +12,7 @@
   "preselections": [],
   "cols_to_remove": null,
   "pid": {
-    "combine_vars": true,
+    "combine_vars": false,
     "mass_hypos": ["Pi", "Ka"],
     "n_prongs": 3
   },
@@ -20,8 +20,9 @@
   "filt_bkg_mass": "fM < 1.82 || (1.92 < fM && fM < 2.00)",
   "output": {
     "dirs": [
-      "/home/abigot/HFStudies/ML/training_samples/HF_LHC22o_pass4_minBias_small_2P3PDstar_run_137566"],
+      "test/"],
     "force": true,
-    "tree_name": "treeMLDplus"
+    "tree_name": "treeMLDplus",
+    "store_all": false
   }
 }

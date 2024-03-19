@@ -29,7 +29,6 @@
 static constexpr uint8_t idBkg = 0;
 static constexpr uint8_t idPrompt = 1;
 static constexpr uint8_t idNonPrompt = 2;
-static constexpr std::array<uint8_t, 3> ids = {idBkg, idPrompt, idNonPrompt};
 
 static constexpr float nSigTolerance = 0.1;
 static constexpr float nSigDummy = -999. + nSigTolerance;
@@ -177,7 +176,7 @@ void PrepareSamples(TString nameCfgFile="./config_preparation_DplusToPiKPi.json"
   const uint8_t seedSplit = (uint8_t)config["seed_split"].GetInt();
 
   // output
-  const bool force = config["output"]["force"].GetBool();
+  const bool storeAll = config["output"]["store_all"].GetBool(); // to store the whole data
   const auto nameOutputDirs = getVectorFromJson<std::string>(config["output"]["dirs"]);
   const TString nameOutputTree = config["output"]["tree_name"].GetString();
 
@@ -244,14 +243,18 @@ void PrepareSamples(TString nameCfgFile="./config_preparation_DplusToPiKPi.json"
     auto dfTot = dataFrames[0];
 
     // divide dataframe into classes and save them in flagged .root files
-    for (const auto& id : ids) {
-      if (id == idBkg) {
-        dfTot.Filter(TString::Format("fOriginMcRec == %d", id).Data()).Filter(invMassSideBands)
-          .Snapshot(nameOutputTree, TString::Format("%s/%s_%s.root", nameOutputDirs[counter_outdir].data(), labels[id].data(), channel.data()), colsToKeep);
-      } else {
-        dfTot.Filter(TString::Format("fOriginMcRec == %d", id).Data())
-          .Snapshot(nameOutputTree, TString::Format("%s/%s_%s.root", nameOutputDirs[counter_outdir].data(), labels[id].data(), channel.data()), colsToKeep);
+    if (!storeAll) {
+      for (uint8_t id{0}; id < labels.size(); ++id) {
+        if (id == idBkg) {
+          dfTot.Filter(TString::Format("fOriginMcRec == %d", id).Data()).Filter(invMassSideBands)
+            .Snapshot(nameOutputTree, TString::Format("%s/%s_%s.root", nameOutputDirs[counter_outdir].data(), labels[id].data(), channel.data()), colsToKeep);
+        } else {
+          dfTot.Filter(TString::Format("fOriginMcRec == %d", id).Data())
+            .Snapshot(nameOutputTree, TString::Format("%s/%s_%s.root", nameOutputDirs[counter_outdir].data(), labels[id].data(), channel.data()), colsToKeep);
+        }
       }
+    } else {
+      dfTot.Snapshot(nameOutputTree, TString::Format("%s/%s_%s.root", nameOutputDirs[counter_outdir].data(), "All", channel.data()), colsToKeep);
     }
     counter_outdir++;
   }

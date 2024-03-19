@@ -17,10 +17,13 @@ Download the derived `AO2D.root` (produced via a treeCreator task for example) a
 ### Comment on the configurables
 
 ### Prepare samples
-In order to prepare the samples the following script can be used:
-```root -l PrepareSamples.C+(TString nameCfgFile="./config_preparation_DplusToPiKPi.json")```
 
-Preselections can be applied at this level along with teh combination of TPC and TOF PID variables. This macro shall produce `.root` files containing labeled data samples (one file for each label) for each input `AO2D` file.
+In order to prepare the samples the following script can be used while being in O2(Physics) environment:
+```root -l 'PrepareSamples.C+("./config_preparation_DplusToPiKPi.json")'```
+
+Preselections can be applied at this level along with the combination of TPC and TOF PID variables. This macro shall produce `.root` files containing labeled data samples (one file for each label) for each input `AO2D` file.
+
+*Conventions: create a directory for each input `AO2D`. In each directory, the output of the data preparation will be stored. A posteriori, inside the training configuration file, one shall specify the path to these directories. No need to specify the files names as these ones are generated automatically according to the analysed decay channel.*
 
 ### Perform training
 In order to perform the training and produce the BDT models to be used in D2H, the following script can be used:

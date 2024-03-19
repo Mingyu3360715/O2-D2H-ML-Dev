@@ -11,9 +11,6 @@
 # granted to it by virtue of its status as an Intergovernmental Organization
 # or submit itself to any jurisdiction.
 
-# TODO:
-# - add switch between .parquet and .root files
-# - add configurable for tree_name for input
 
 """
 file: train_d2h.py
@@ -21,7 +18,7 @@ brief: script for the training of ML models to be used in D2H
 note: inspired by EventFiltering/PWGHF/Macros/train_hf_triggers.py and Run2 macros
 usage: python3 train_d2h.py CONFIG
 author: Alexandre Bigot <alexandre.bigot@cern.ch>, Strasbourg University
-author: Mingyu Zhang <mingyu.zang@cern.ch>
+author: Mingyu Zhang <mingyu.zang@cern.ch>, Central China Normal University
 """
 
 import argparse
@@ -54,11 +51,11 @@ def enforce_list(x):
     Helper method to enforce list type
 
     Parameters
-    ----------
+    -----------------
     - x: a string or a list of string
 
     Returns
-    ----------
+    -----------------
     - x_list if x was not a list (and not None), x itself otherwise
     """
 
@@ -78,17 +75,28 @@ class MlTrainer:
     """
 
     def __init__(self, config):
+        """
+        Init method
+
+        Parameters
+        -----------------
+        - config: dictionary with config read from a yaml file
+        """
+
+        # input
         self.channel = config["channel"]
         self.seed_split = config["seed_split"]
         self.labels = enforce_list(config["labels"])
-
         pt_bins_limits = enforce_list(config["data_prep"]["pt_bins_limits"])
         self.pt_bins = [[a, b] for a, b in zip(pt_bins_limits[:-1], pt_bins_limits[1:])]
-        self.extension = config["plots"]["extension"]
 
         self.indirs = config["data_prep"]["indirs"]
-        self.binary = True if self.indirs["Nonprompt"] is None else False
-        self.outdir = config["output"]["dir"]
+        self.tree_name = config["data_prep"]["tree_name"]
+        self.infile_extension = "parquet.gzip" if self.tree_name is None else "root"
+        self.binary = self.indirs["Nonprompt"] is None
+        self.file_lists = {}
+
+        # (hyper)parameters
         self.share = config["data_prep"]["class_balance"]["share"]
         self.bkg_factor = config["data_prep"]["class_balance"]["bkg_factor"]
         self.downsample_bkg_factor = config["data_prep"]["downsample_bkg_factor"]
@@ -104,10 +112,11 @@ class MlTrainer:
         self.hyper_pars = config["ml"]["hyper_pars"]
         self.hyper_pars_opt = config["ml"]["hyper_pars_opt"]
 
+        # output
+        self.outdir = config["output"]["dir"]
+        self.extension = config["plots"]["extension"]
         self.column_to_save_list = config["output"]["column_to_save_list"]
         self.log_file = config["output"]["log_file"]
-
-        self.file_lists = {}
 
     def __check_input_consistency(self):
         """
@@ -159,7 +168,7 @@ class MlTrainer:
             if self.indirs[cand_type] is None:
                 continue
             for indir in self.indirs[cand_type]:
-                file = os.path.join(indir, f"{cand_type}_{self.channel}.root")  # TODO make parquet available ?
+                file = os.path.join(indir, f"{cand_type}_{self.channel}.{self.infile_extension}")
                 if os.path.isfile(file):
                     file_lists[cand_type].append(file)
                 else:
@@ -175,7 +184,7 @@ class MlTrainer:
         """
         Helper method to get pT-sliced dataframes for each class
 
-        Outputs
+        Returns
         -----------------
         - hdl_bkg: pandas dataframe containing only background candidates
         - hdl_prompt: pandas dataframe containing only prompt signal
@@ -186,10 +195,10 @@ class MlTrainer:
 
         self.__fill_list_input_files()
 
-        hdl_bkg = TreeHandler(file_name=self.file_lists[self.labels[0]], tree_name="treeMLDplus")
-        hdl_prompt = TreeHandler(file_name=self.file_lists[self.labels[1]], tree_name="treeMLDplus")
+        hdl_bkg = TreeHandler(file_name=self.file_lists[self.labels[0]], tree_name=self.tree_name)
+        hdl_prompt = TreeHandler(file_name=self.file_lists[self.labels[1]], tree_name=self.tree_name)
         hdl_nonprompt = None if self.binary else TreeHandler(
-            file_name=self.file_lists[self.labels[2]], tree_name="treeMLDplus")
+            file_name=self.file_lists[self.labels[2]], tree_name=self.tree_name)
 
         hdl_prompt.slice_data_frame(self.name_pt_var, self.pt_bins, True)
         if hdl_nonprompt is not None:
@@ -213,7 +222,7 @@ class MlTrainer:
         - out_dir: output directory
         - bkg_factor: multiplier for (n_prompt + n_nonprompt) used to determine n_cand_bkg in the 'all_signal' option
 
-        Outputs
+        Returns
         -----------------
         - train_test_data: list containing train/test sets and the associated model predictions
         """
@@ -274,7 +283,7 @@ class MlTrainer:
         log_bkg_fraction = "\nFraction of original (i.e. from original dataset) bkg candidates used for ML: " \
             f"{100*bkg_fraction*self.downsample_bkg_factor:.2f}%"
         if (1 - self.test_frac) * bkg_fraction * self.downsample_bkg_factor > MAX_BKG_FRAC:
-            log_bkg_fraction = f"\033[93m\nWARNING: using more than {100*MAX_BKG_FRAC:.0f}% " \
+            log_bkg_fraction += f"\n\033[93m\nWARNING: using more than {100*MAX_BKG_FRAC:.0f}% " \
                 "of original (i.e. from original dataset) bkg available for training!\033[0m"
         print(log_bkg_fraction)
 
@@ -351,9 +360,6 @@ class MlTrainer:
         - hyper_pars: default hyper-parameters (can be modified if Optuna enabled)
         - pt_bin: pT bin
         - out_dir: output directory
-
-        Outputs
-        -----------------
         """
 
         n_classes = len(np.unique(train_test_data[3]))
