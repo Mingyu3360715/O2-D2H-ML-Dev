@@ -1,0 +1,70 @@
+---
+input:
+  filename: [/home/abigot/O2-D2H-ML-Dev/trainings/Dplus/pt2_20/DplusToPiKPi_ModelApplied_pT_2_20.parquet.gzip]
+  n_events: 7.6e+08 # number of events for bkg in dataframe (hEvents in AnalysisResults.root)
+
+  secpeak: # only for Ds
+    activate: false
+    filename_prompt: null
+    filename_nonprompt: null
+    mean: 0.
+    sigma: 0.
+
+  background:
+    fraction_used_for_ml: [0.01] # corresponds to the product of downSampleBkgFactor (configurable set in O2Physics tree creator)
+    # with the downscale factor set at sample preparation level (see the dedicated config file)
+    fit:
+      func: expo # fit function for bkg from sidebands, e.g. pol1, pol2, expo
+      nsigma: 4 # number of sigma from signal region, used to select sidebands
+      mass_min: null
+      mass_max: null
+      is_mc: false # if false bkg from sidebands
+    corrfactor:
+      filename: null # set null if no MC bkg correction is needed
+      histoname: null
+
+  presel_acc_eff:
+    filename: /home/abigot/O2-D2H-ML-Dev/efficiency/AccEffPreselDplusToPiKPi.root
+    type: TEfficiency # options available: TH1, TEfficiency
+    names:
+      prompt: TEfficiency_AccEffPreselDplusToPiKPiPrompt # hAccEffPreselDplusToPiKPiPrompt
+      nonprompt: TEfficiency_AccEffPreselDplusToPiKPiNonprompt # hAccEffPreselDplusToPiKPiNonprompt
+
+pt_bins_limits: [4, 5]
+
+predictions:
+  crosssec:
+    filename: /home/abigot/Documents/ALICE/HFFilter/Efficiency/BDT_applied/DmesonLcPredictions_13TeV_y05_FFptDepLHCb_BRPDG_PDG2020_PromptLcMod.root
+    histonames:
+      prompt: hDpluskpipipred_max
+      nonprompt: hDpluskpipifromBpred_max_corr
+
+dfparametercuts:
+  name: null
+  min: null
+  max: null
+  enable: False  # enable cuts over df column query over each df and relative scan histos
+
+expected_signal_promptness: 'prompt' # Choice between: 'prompt' or 'nonprompt'
+sigma_mb: 50.87e+9 #pb
+integrated_luminosity: 17.3 #pb^{-1} # overrides n_expected_events if not null
+n_expected_events: 100000 # number of expected events (in the data sample we later want to apply trained models)
+
+cutvars: # options available: ML_output_Bkg, ML_output_Prompt,ML_output_Nonprompt
+  ML_output_Bkg:
+    min: [0.05]
+    max: [0.2]
+    step: [0.05] #[0.005]
+    cut_direction: '<' # options available: '>' ('<') for lower (upper) limit
+  ML_output_Prompt:
+    min: [0.4] #[0.01]
+    max: [0.5]
+    step: [0.05] #[0.005]
+    cut_direction: '>' # options available: '>' ('<') for lower (upper) limit
+
+output:
+  outdir: optimisation/
+  filename: dev_optimisation_output.root
+  dir_plots: optimisation/plots/
+  watermark: "#color[619]{THIS WORK}" # watermark on top left of the canvas for ML scan, empty string to deactivate
+  extension: ["pdf", "png"] # extension of files containing saved plots
